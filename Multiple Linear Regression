@@ -1,0 +1,182 @@
+
+# I have performed Multiple linear Regression for 50 Start Ups and predicted the Profit
+# Multilinear Regression for 50 Start Ups
+import pandas as pd 
+import numpy as np
+import matplotlib.pyplot as plt
+
+# loading the data
+
+startup = pd.read_csv("file:///C:/Users/new/Downloads/Multi Linear Regression/50_Startups.csv",encoding = 'unicode_escape')
+
+from sklearn.preprocessing import LabelEncoder
+
+#Auto encodes any dataframe column of type category or object.
+from sklearn.preprocessing import LabelEncoder 
+  
+le = LabelEncoder() 
+  
+startup['State']= le.fit_transform(startup['State'])
+
+
+# Correlation matrix 
+startup.corr()
+
+# we do not see any High collinearity between input variables
+# so there is no collinerarity problem
+ 
+# Scatter plot between the variables along with histograms
+import seaborn as sns # fro advanced visualization
+sns.pairplot(startup)
+
+
+# columns names
+startup.columns
+
+#pd.plotting.scatter_matrix(startup); -> also used for plotting all in one graph
+                           
+
+
+# preparing model considering all the variables 
+import statsmodels.formula.api as smf   # for regression model
+         
+# Preparing model                  
+ml1 = smf.ols('Profit~Rdspend+Admin+Marketingspend+State',data=startup).fit() # regression model
+
+# Getting coefficients of variables               
+ml1.params
+
+# Summary
+ml1.summary()
+
+# p-values for Admin, Marketingspend and State variables are greater than 0.05 
+# R-squared  0.95 very strong
+#  lets check r values between Admin and marketingspend
+
+
+np.corrcoef(startup.State,startup.Marketingspend)
+# r =0.077 very weak 
+np.corrcoef(startup.State,startup.Admin)
+# r =0.118 very weak
+np.corrcoef(startup.Marketingspend,startup.Admin)
+# r = -0.032  very weak
+
+
+# Checking whether data has any influential values 
+# influence index plots
+
+import statsmodels.api as sm
+sm.graphics.influence_plot(ml1)
+# there is no showing high influence 
+
+# Studentized Residuals = Residual/standard deviation of residuals
+
+
+#cars.drop(["MPG"],axis=1)
+
+# X => A B C D 
+# X.drop(["A","B"],axis=1) # Dropping columns 
+# X.drop(X.index[[5,9,19]],axis=0)
+
+#X.drop(["X1","X2"],aixs=1)
+#X.drop(X.index[[0,2,3]],axis=0)
+           
+
+
+# Confidence values 99%
+print(ml1.conf_int(0.01)) # 99% confidence level
+
+
+# Predicted values of MPG 
+price_pred = ml1.predict(startup[['Rdspend','Admin','Marketingspend','State']])
+price_pred
+
+startup.head()
+# calculating VIF's values of independent variables
+
+rsq_rd = smf.ols('Rdspend~Admin+Marketingspend+State',data=startup).fit().rsquared  
+vif_rd = 1/(1-rsq_rd) # 2.48
+
+rsq_ad = smf.ols('Admin ~Rdspend+Marketingspend+State',data=startup).fit().rsquared  
+vif_ad = 1/(1-rsq_ad) #  0.17
+
+rsq_ms = smf.ols(' Marketingspend~Admin+Rdspend+State',data=startup).fit().rsquared  
+vif_ms = 1/(1-rsq_ms) #  2.32
+
+rsq_st = smf.ols('State ~ Admin+Rdspend+Marketingspend ',data=startup).fit().rsquared  
+vif_st = 1/(1-rsq_st) #  1.011
+
+
+# all vif values are < 10 so all variables are significant
+
+
+# Added varible plot 
+sm.graphics.plot_partregress_grid(ml1)
+
+# now excluding admin , marketingspend and state as their coefficents are insignificant
+
+# final model
+final_ml= smf.ols('Profit~Rdspend',data=startup).fit()
+final_ml.params
+final_ml.summary() # 0.94 R_squared is reduced by 0.1
+
+profit_pred = final_ml.predict(startup)
+
+import statsmodels.api as sm
+# added variable plot for the final model
+sm.graphics.plot_partregress_grid(final_ml)
+
+
+######  Linearity #########
+# Observed values VS Fitted values
+plt.scatter(startup.Profit,profit_pred,c="r");plt.xlabel("observed_values");plt.ylabel("fitted_values")
+
+# Residuals VS Fitted Values 
+plt.scatter(profit_pred,final_ml.resid_pearson,c="r"),plt.axhline(y=0,color='blue');plt.xlabel("fitted_values");plt.ylabel("residuals")
+
+
+########    Normality plot for residuals ######
+# histogram
+plt.hist(final_ml.resid_pearson) # Checking the standardized residuals are normally distributed
+
+# QQ plot for residuals 
+import pylab          
+import scipy.stats as st
+
+# Checking Residuals are normally distributed
+st.probplot(final_ml.resid_pearson, dist="norm", plot=pylab)
+
+
+############ Homoscedasticity #######
+
+# Residuals VS Fitted Values 
+plt.scatter(profit_pred,final_ml.resid_pearson,c="r"),plt.axhline(y=0,color='blue');plt.xlabel("fitted_values");plt.ylabel("residuals")
+
+
+
+### Splitting the data into train and test data 
+
+from sklearn.model_selection import train_test_split
+startup_train,startup_test  = train_test_split(startup,test_size = 0.2) # 20% size
+
+# preparing the model on train data 
+
+model_train = smf.ols("Profit~Rdspend",data=startup_train).fit()
+
+# train_data prediction
+train_pred = model_train.predict(startup_train)
+
+# train residual values 
+train_resid  = train_pred - startup_train.Profit
+
+# RMSE value for train data 
+train_rmse = np.sqrt(np.mean(train_resid*train_resid))
+
+# prediction on test data set 
+test_pred = model_train.predict(startup_test)
+
+# test residual values 
+test_resid  = test_pred - startup_test.Profit
+
+# RMSE value for test data 
+test_rmse = np.sqrt(np.mean(test_resid*test_resid))
