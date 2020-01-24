@@ -1,0 +1,76 @@
+# Logistic Regression
+
+import pandas as pd
+import numpy as np
+import seaborn as sb
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split # train and test spiltting data
+from sklearn import metrics
+from sklearn import preprocessing
+from sklearn.metrics import classification_report
+
+# loading affairs data 
+
+affairs = pd.read_csv("file:///C:/Users/new/Downloads/Batch 111119 Rushikesh Bulbule/Logistic Regression/affairs.csv")
+
+
+affairs.head(10)
+
+from sklearn.preprocessing import LabelEncoder 
+  
+le = LabelEncoder() 
+  
+affairs['gender']= le.fit_transform(affairs['gender'])
+affairs['children']= le.fit_transform(affairs['children'])
+
+
+#cat_cols = ["gender","children"]
+#cont_cols = ["affairs","age","yearsmarried","religiousness","education","occupation","rating"]
+
+# Getting the barplot for the categorical columns 
+
+sb.countplot(x="gender",data=affairs,palette="hls")
+pd.crosstab(affairs.affairs,affairs.children).plot(kind="bar")
+
+sb.countplot(x="children",data=affairs,palette="hls")
+
+
+# Data Distribution - Boxplot of continuous variables wrt to each category of categorical columns
+
+sb.boxplot(x="gender",y="children",data=affairs,palette="hls")
+
+
+# To get the count of null values in the data 
+
+affairs.isnull().sum()
+# no null values
+
+
+
+# Model building 
+from sklearn.linear_model import LogisticRegression
+
+affairs.shape
+X = affairs.iloc[:,[1,2,3,4,5,6,7,8]]# independent variables
+Y = affairs.iloc[:,0] # calling affairs column only as it is to be predicted
+classifier = LogisticRegression()
+classifier.fit(X,Y)
+
+classifier.coef_ # coefficients of features 
+classifier.predict_proba (X) # Probability values 
+
+y_pred = classifier.predict(X)
+affairs["y_pred"] = y_pred
+y_prob = pd.DataFrame(classifier.predict_proba(X.iloc[:,:]))
+new_df = pd.concat([affairs,y_prob],axis=1)
+
+from sklearn.metrics import confusion_matrix
+# doing confusion matrix
+confusion_matrix = confusion_matrix(Y,y_pred)
+print (confusion_matrix)
+type(y_pred)
+accuracy = sum(Y==y_pred)/affairs.shape[0]
+pd.crosstab(y_pred,Y)
+# accuracy 0.74 
